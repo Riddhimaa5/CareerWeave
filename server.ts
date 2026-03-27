@@ -12,10 +12,11 @@ let ai: GoogleGenAI | null = null;
 
 function getAI() {
   if (!ai) {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY environment variable is missing.");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+      throw new Error("GEMINI_API_KEY environment variable is missing or invalid. Please configure it in the AI Studio Secrets panel.");
     }
-    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    ai = new GoogleGenAI({ apiKey });
   }
   return ai;
 }
@@ -83,7 +84,16 @@ app.post('/generate', async (req, res) => {
     res.json(paths);
   } catch (error: any) {
     console.error('Error generating paths:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate career paths.' });
+    let errorMessage = error.message || 'Failed to generate career paths.';
+    
+    // Handle specific Gemini API errors
+    if (errorMessage.includes('API key not valid') || errorMessage.includes('API_KEY_INVALID')) {
+      errorMessage = 'Invalid Gemini API Key. Please configure a valid API key in the AI Studio Secrets panel.';
+    } else if (errorMessage.includes('GEMINI_API_KEY environment variable is missing')) {
+      errorMessage = 'Missing Gemini API Key. Please configure it in the AI Studio Secrets panel.';
+    }
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 
