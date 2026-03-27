@@ -1,14 +1,24 @@
 import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import * as path from 'path';
 
 const app = express();
 app.use(express.json());
 
-// Initialize Gemini API
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Initialize Gemini API lazily
+let ai: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!ai) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY environment variable is missing.");
+    }
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return ai;
+}
 
 app.post('/generate', async (req, res) => {
   try {
@@ -18,7 +28,8 @@ app.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'Current role and target role are required.' });
     }
 
-    const response = await ai.models.generateContent({
+    const genAI = getAI();
+    const response = await genAI.models.generateContent({
       model: 'gemini-3.1-pro-preview',
       contents: `Generate 2 to 3 career paths from "${currentRole}" to "${targetRole}".
       Provide 3 paths labeled exactly: "🚀 Fast Track", "⚖️ Balanced", and "🧠 Expert".
@@ -27,28 +38,28 @@ app.post('/generate', async (req, res) => {
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
             paths: {
-              type: Type.ARRAY,
+              type: "ARRAY",
               items: {
-                type: Type.OBJECT,
+                type: "OBJECT",
                 properties: {
-                  label: { type: Type.STRING },
-                  description: { type: Type.STRING },
+                  label: { type: "STRING" },
+                  description: { type: "STRING" },
                   steps: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                      type: Type.OBJECT,
+                      type: "OBJECT",
                       properties: {
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING },
+                        title: { type: "STRING" },
+                        description: { type: "STRING" },
                         skills: {
-                          type: Type.ARRAY,
-                          items: { type: Type.STRING }
+                          type: "ARRAY",
+                          items: { type: "STRING" }
                         },
-                        time: { type: Type.STRING },
-                        difficulty: { type: Type.STRING }
+                        time: { type: "STRING" },
+                        difficulty: { type: "STRING" }
                       },
                       required: ["title", "description", "skills", "time", "difficulty"]
                     }
@@ -68,7 +79,8 @@ app.post('/generate', async (req, res) => {
       rawText = rawText.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
     }
     const data = JSON.parse(rawText);
-    res.json(data.paths || []);
+    const paths = Array.isArray(data) ? data : (data.paths || []);
+    res.json(paths);
   } catch (error: any) {
     console.error('Error generating paths:', error);
     res.status(500).json({ error: error.message || 'Failed to generate career paths.' });
@@ -90,9 +102,9 @@ async function startServer() {
     });
   }
 
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
