@@ -39,12 +39,15 @@ export default function App() {
         body: JSON.stringify({ currentRole, targetRole }),
       });
 
-      if (!res.ok) throw new Error('Failed to generate paths');
-      
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate paths');
+      }
+      
       setPaths(data);
-    } catch (err) {
-      setError('Oops! Our AI got tangled. Please try weaving again.');
+    } catch (err: any) {
+      setError(err.message || 'Oops! Our AI got tangled. Please try weaving again.');
     } finally {
       setIsLoading(false);
     }

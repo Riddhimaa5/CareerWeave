@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -18,7 +19,7 @@ app.post('/generate', async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-preview',
+      model: 'gemini-3.1-pro-preview',
       contents: `Generate 2 to 3 career paths from "${currentRole}" to "${targetRole}".
       Provide 3 paths labeled exactly: "🚀 Fast Track", "⚖️ Balanced", and "🧠 Expert".
       Each path must have 3 to 5 steps.
@@ -62,11 +63,15 @@ app.post('/generate', async (req, res) => {
       }
     });
 
-    const data = JSON.parse(response.text || '{}');
+    let rawText = response.text || '{}';
+    if (rawText.startsWith('```')) {
+      rawText = rawText.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
+    }
+    const data = JSON.parse(rawText);
     res.json(data.paths || []);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating paths:', error);
-    res.status(500).json({ error: 'Failed to generate career paths.' });
+    res.status(500).json({ error: error.message || 'Failed to generate career paths.' });
   }
 });
 
