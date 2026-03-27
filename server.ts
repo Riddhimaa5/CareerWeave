@@ -11,8 +11,8 @@ let ai: GoogleGenAI | null = null;
 
 function getAI() {
   if (!ai) {
-    const apiKey = process.env.AIzaSyBLa1BGgx2gcr1jALitLSdItbdtB9Jqefg;
-    if (!apiKey || apiKey === 'CareerWeave') {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
       throw new Error("GEMINI_API_KEY environment variable is missing or invalid. Please configure it in the AI Studio Secrets panel.");
     }
     ai = new GoogleGenAI({ apiKey });
